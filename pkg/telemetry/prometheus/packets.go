@@ -24,15 +24,19 @@ var (
 	retransmitPackets atomic.Uint64
 	participantJoin   atomic.Uint64
 
-	promPacketLabels    = []string{"direction", "transmission"}
-	promPacketTotal     *prometheus.CounterVec
-	promPacketBytes     *prometheus.CounterVec
-	promRTCPLabels      = []string{"direction"}
-	promNackTotal       *prometheus.CounterVec
-	promPliTotal        *prometheus.CounterVec
-	promFirTotal        *prometheus.CounterVec
-	promParticipantJoin *prometheus.CounterVec
-	promConnections     *prometheus.GaugeVec
+	promPacketLabels          = []string{"direction", "transmission"}
+	promPacketTotal           *prometheus.CounterVec
+	promPacketBytes           *prometheus.CounterVec
+	promRTCPLabels            = []string{"direction"}
+	promRTCPParticipantLabels = []string{"direction", "participant_id"}
+	promNackTotal             *prometheus.CounterVec
+	promPliTotal              *prometheus.CounterVec
+	promFirTotal              *prometheus.CounterVec
+	promParticipantNackTotal  *prometheus.CounterVec
+	promParticipantPliTotal   *prometheus.CounterVec
+	promParticipantFirTotal   *prometheus.CounterVec
+	promParticipantJoin       *prometheus.CounterVec
+	promConnections           *prometheus.GaugeVec
 )
 
 func initPacketStats(nodeID string) {
@@ -66,6 +70,25 @@ func initPacketStats(nodeID string) {
 		Name:        "total",
 		ConstLabels: prometheus.Labels{"node_id": nodeID},
 	}, promRTCPLabels)
+	promParticipantNackTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace:   livekitNamespace,
+		Subsystem:   "participant",
+		Name:        "nack_total",
+		ConstLabels: prometheus.Labels{"node_id": nodeID},
+	}, promRTCPParticipantLabels)
+	promParticipantPliTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace:   livekitNamespace,
+		Subsystem:   "participant",
+		Name:        "pli_total",
+		ConstLabels: prometheus.Labels{"node_id": nodeID},
+	}, promRTCPParticipantLabels)
+	promParticipantFirTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace:   livekitNamespace,
+		Subsystem:   "participant",
+		Name:        "fir_total",
+		ConstLabels: prometheus.Labels{"node_id": nodeID},
+	}, promRTCPParticipantLabels)
+
 	promParticipantJoin = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace:   livekitNamespace,
 		Subsystem:   "participant_join",
@@ -118,16 +141,19 @@ func IncrementBytes(direction Direction, count uint64, retransmit bool) {
 	}
 }
 
-func IncrementRTCP(direction Direction, nack, pli, fir uint32) {
+func IncrementRTCP(participantID string, direction Direction, nack, pli, fir uint32) {
 	if nack > 0 {
 		promNackTotal.WithLabelValues(string(direction)).Add(float64(nack))
+		promParticipantNackTotal.WithLabelValues(string(direction), participantID).Add(float64(nack))
 		nackTotal.Add(uint64(nack))
 	}
 	if pli > 0 {
 		promPliTotal.WithLabelValues(string(direction)).Add(float64(pli))
+		promParticipantPliTotal.WithLabelValues(string(direction), participantID).Add(float64(pli))
 	}
 	if fir > 0 {
 		promFirTotal.WithLabelValues(string(direction)).Add(float64(fir))
+		promParticipantFirTotal.WithLabelValues(string(direction), participantID).Add(float64(fir))
 	}
 }
 

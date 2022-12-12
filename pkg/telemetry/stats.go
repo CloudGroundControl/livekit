@@ -34,7 +34,7 @@ func (t *telemetryService) TrackStats(streamType livekit.StreamType, participant
 				bytes += stream.RetransmitBytes
 			}
 		}
-		prometheus.IncrementRTCP(direction, nacks, plis, firs)
+		prometheus.IncrementRTCP(string(participantID), direction, nacks, plis, firs)
 		prometheus.IncrementPackets(direction, uint64(packets), false)
 		prometheus.IncrementBytes(direction, bytes, false)
 		if retransmitPackets != 0 {
